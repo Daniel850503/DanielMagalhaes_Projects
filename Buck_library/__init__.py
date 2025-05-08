@@ -6,11 +6,12 @@ Created on Wed May  7 11:21:53 2025
 """
 
 from .Buck_L_calc import (  
-    Lmax_calc_1,
+    L_calc_1,
     AC_DC_ratio_calc,
-    Lmax_calc_2,
+    L_calc_2,
     L_ET_calc,
-    Lmax_calc_3,
+    L_calc_3,
+    L_calc,
     estimation_current_component_AC,
     estimation_Iratio_calc,
     estimation_IL_peak_calc,
@@ -27,12 +28,20 @@ from .Buck_C_calc import (Cout_max_calc_1,
     Cout_max_calc_2,
     Cout_max_calc_3)
 
+from .BuckDraft import (ILmin_calc, first_current_converter_simulation,
+    first_CAPout_current_converter_simulation,
+    first_voltage_inductor_simulation,
+    first_voltage_capacitor_simulation,
+    Conceptual_Buck_draft)
+
+from .BuckConverterClass import Converter_dcdc
 __all__ = [
-    "Lmax_calc_1",
+    "L_calc_1",
     "AC_DC_ratio_calc",
-    "Lmax_calc_2",
+    "L_calc_2",
     "L_ET_calc",
-    "Lmax_calc_3",
+    "L_calc_3",
+    "L_calc",
     "estimation_current_component_AC",
     "estimation_Iratio_calc",
     "estimation_IL_peak_calc",
@@ -46,5 +55,12 @@ __all__ = [
     "L_Area_product_calc",
     "Cout_max_calc_1",
     "Cout_max_calc_2",
-    "Cout_max_calc_3"
-]
+    "Cout_max_calc_3",
+    "ILmin_calc",
+    "first_current_converter_simulation",
+    "first_CAPout_current_converter_simulation",
+    "first_voltage_inductor_simulation",
+    "first_voltage_capacitor_simulation",
+    "Conceptual_Buck_draft",
+    "Converter_dcdc"
+    ]

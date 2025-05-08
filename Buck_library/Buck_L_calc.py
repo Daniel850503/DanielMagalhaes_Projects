@@ -6,14 +6,16 @@ Created on Wed May  7 10:58:47 2025
 """
 
 #library for buck indutance calculation
+import numpy as np
+import Buck_library as bck
 
-def Lmax_calc_1(Vout_max, VDiodo, Dmax, DeltaIL_max, F_max):
+def L_calc_1(Vout_max, VDiodo, Dmax, DeltaIL_max, F_max):
     return round(((Vout_max - VDiodo)*(1-Dmax))/(DeltaIL_max*F_max),9)
 
 def AC_DC_ratio_calc (Iout_max, DeltaIL_max):
     return round((DeltaIL_max/Iout_max),2)
 
-def Lmax_calc_2(Vin_min, Vsw, Vout_max, VDiodo, r, F_max, Iout_max):
+def L_calc_2(Vin_min, Vsw, Vout_max, VDiodo, r, F_max, Iout_max):
     return round(((Vin_min-Vsw-Vout_max)*(Vout_max+VDiodo))/(
             (Vin_min-Vsw+VDiodo)*r*F_max*Iout_max),9)
 
@@ -25,9 +27,20 @@ def L_ET_calc (Ton, Vin , Vout, Vsw):
     #this depends directly on the absolute value of the frequency too, not just the Et).
     return round ((Vin - Vsw - Vout) *  Ton,9) #Vusecs
 
-def Lmax_calc_3 (ET_L, I_ratio, Iout):
+def L_calc_3 (ET_L, I_ratio, Iout):
     return round ( ET_L/(I_ratio * Iout), 9)
-    
+ 
+
+#final function that will give the range value for the conceptual inductor 
+def L_calc (IRatio, Ton, Vin , Vout, Vsw, VDiodo, I_delta_max, F_max, Iout_max):
+    Lvalues = np.zeros((1, 3), dtype=float)
+    ET_L = bck.L_ET_calc (Ton, Vin, Vout, Vsw)
+    Lvalues[0, 0] =  bck.L_calc_1(Vout, VDiodo,Ton, I_delta_max, F_max)
+    Lvalues[0, 1] =  bck.L_calc_2(Vin, Vsw, Vout, VDiodo, IRatio, F_max, Iout_max)
+    Lvalues[0, 2] = bck.L_calc_3 (ET_L, IRatio, Iout_max)
+    return np.max(Lvalues)
+
+
 def estimation_current_component_AC (ET_L, L):
     return round (ET_L/L, 2)
 
@@ -39,6 +52,9 @@ def estimation_IL_peak_calc(Iout,Iac_estimated):
 
 def estimation_ILRMS_calc(Iout,Iac_estimated): 
     return round(((Iout**2)+(Iac_estimated**2)/12)**0.5,2)
+
+
+#-------------------------------------------------------------------
 
 def Estimation_L_copperloss_calc (IL_RMS,L_DCR):
     return round (L_DCR * IL_RMS**2)

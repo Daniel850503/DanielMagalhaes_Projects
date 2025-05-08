@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: power_converter_tools
+Version: 0.7.0
+Summary: tool to support the design of a DC/DC buck converter
+Author: Daniel Magalhães
+Author-email: seu@email.com
+License: MIT
+Dynamic: author
+Dynamic: author-email
+Dynamic: license
+Dynamic: summary

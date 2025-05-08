@@ -14,189 +14,15 @@ import numpy as np
 import Buck_library as bck
 import Signals_library as sgn
 import Plot_library as plt
-#from Buck_library.Buck_L_calc import Lmax_calc_1 
+
 # Global constants (em UPPER_CASE)
 
 
 # Configuração de logging (opcional)
+
 """logging.basicConfig(level=logging.INFO)"""
 
-
-# Class
-class Converter_dcdc :
-    def __init__(self, Vin_min, Vin_max, Vout_min, Vout_max, 
-                 P_max, F_max, IL_ripple, Vout_ripple, Effmin):
-            self.Vin_min = Vin_min
-            self.Vin_max = Vin_max
-            self.Vout_min = Vout_min
-            self.Vout_max = Vout_max
-            self.P_max = P_max
-            self.F_max = F_max
-            self.IL_ripple = IL_ripple # em percentagem
-            self.Vout_ripple = Vout_ripple
-            self.Effmin = Effmin
-            
-    def Ganho(self):
-        self.Ganho_max = self.Vout_max/self.Vin_min
-    
-    def Out_current_dc (self):
-        self.Iout_dc = round((self.P_max/self.Vout_min),2)
-        
-    def Out_current_max (self):    
-        self.Iout_max = round((self.P_max/self.Vout_min)*
-                               (1+((self.IL_ripple/100)/2)), 2)
-     
-    
-    def Delta_current_max (self):
-        self.DeltaIL_max = round((self.P_max/self.Vout_min)* 
-                                 (self.IL_ripple/100), 2)
-     
-    def Out_current_min(self):
-        self.Iout_min = round (self.Iout_max-self.DeltaIL_max,2)
-        
-        
-    def total_Rdc_Loss_calc( self):
-        self.Total_R_loss = round ((self.P_max * ( 1 - self.Effmin / 100 ))/
-                                   (self.Iout_max*self.Iout_max))
-    
-    def total_Vdc_Loss_calc( self ):
-
-        self.Total_V_loss = round ((self.P_max * ( 1 - self.Effmin / 100 ))/
-                                   self.Iout_max, 2)
-        
-    def Loss_Max_calc (self):
-        self.total_loss_estimation = round (self.P_max * 
-                                    ( 1 - self.Effmin / 100 ),2)
-    
-    def duty_cycle_estimation_calc (self):
-        self.duty_cycle_max = round((self.Vout_max + self.Total_V_loss) / 
-                                    self.Vin_min, 2)
-        
-    def AC_DC_ratio_calc (self):
-        self.current_ratio = round((self.DeltaIL_max / self.Iout_dc),2) 
-    
-    def Periode_calc (self):
-        self.T_total = 1/self.F_max
-    
-    def Switch_time_on_calc (self):
-        self.Ton = round (self.T_total * self.duty_cycle_max,9)
-    
-    def Switch_time_off_calc (self):
-        self.Toff = round (self.T_total * (1-self.duty_cycle_max),9)
-    
-    def Current_ripple_Incrise_rate (self):
-        self.Iinc_rate = self.DeltaIL_max / self.Ton
-        
-    def Current_ripple_decrise_rate (self):
-        self.Idec_rate = self.DeltaIL_max / self.Toff
-
-#-------Functions---------
-
-
-def first_current_converter_simulation ( 
-        PWM, Imin,period, increment_on, decrement_off, duty, simulation_step):
-    length = PWM.shape[1]
-    IL = np.zeros((2, length), dtype=float)
-    IL[0] = PWM[0]
-    IL[1,0] = Imin
-    #step_on = increment_on/(length*duty)
-    #step_off = decrement_off/(length*(1-duty))
-    step_on = increment_on*simulation_step
-    step_off = decrement_off*simulation_step
-    for t in range(1, length, 1):
-        if (PWM[1,t] == 1):
-            IL[1,t] = IL[1,t-1] + step_on
-        else:
-            IL[1,t] = IL[1,t-1] - step_off
-    return IL
-    
-def first_CAPout_current_converter_simulation ( 
-        PWM, Idelta,period, increment_on, decrement_off, duty, simulation_step):
-    length = PWM.shape[1]
-    IC = np.zeros((2, length), dtype=float)
-    IC[0] = PWM[0]
-    IC[1,0] = -Idelta/2
-    #step_on = increment_on/(length*duty)
-    #step_off = decrement_off/(length*(1-duty))
-    step_on = increment_on*simulation_step
-    step_off = decrement_off*simulation_step
-    for t in range(1, length, 1):
-        if (PWM[1,t] == 1):
-            IC[1,t] = IC[1,t-1] + step_on
-        else:
-            IC[1,t] = IC[1,t-1] - step_off
-    return IC
-
-def first_voltage_inductor_simulation ( 
-        PWM, Vin, Vloss, Vout):
-    length = PWM.shape[1]
-    VL = np.zeros((2, length), dtype=float)
-    VL[0] = PWM[0]
-    VL[1] = PWM[1]*Vin - (Vloss + Vout)
-    # for t in range(0, length, 1):
-    #     if (PWM[1,t] == 1):
-    #         VL[1,t] = Vin - (Vloss + Vout)
-    #     else:
-    #         VL[1,t] = - (Vloss + Vout)
-    return VL
-
-def first_voltage_capacitor_simulation (IC, Periode, Vout_ripple, Vout_max):
-
-    Up_slope = 0.0
-    down_slope = 0.0
-    zero_slope = 0.0
-    Vout_peak_max = Vout_max + Vout_ripple/2
-    Vout_peak_min = Vout_max - Vout_ripple/2
-    length = IC.shape[1]
-    VC = np.zeros((2, length), dtype=float)
-    for i in range (1,length,1):
-        #step 1: only for the periode
-        if (IC[0,i] <= Periode):
-            #step 2: define the ascending slope 
-            if (IC[1,i-1] < IC[1,i]):
-                Up_slope = Up_slope + 1.0
-            #step 2: define the descending slope 
-            elif (IC[1,i-1] > IC[1,i]):
-                down_slope = down_slope + 1.0
-            else: 
-                zero_slope = zero_slope + 1.0
-        else :
-            i = length
-        
-    Up_slope = Vout_ripple / Up_slope
-    down_slope = Vout_ripple / down_slope       
-    VC[1,0] = Vout_peak_min
-    print("Vout_peak_min = ", VC[1,0])   
-    for i in range (1,length,1):
-        VC[0,i] = IC[0,i]
-        if (IC[1,i-1] < IC[1,i]):
-            VC[1,i] =  VC[1,i-1] + Up_slope           
-        elif (IC[1,i-1] > IC[1,i]):
-            VC[1,i] = VC[1,i-1] - down_slope
-        else:
-            #não mudar nada
-            VC[1,i] = VC[1,i-1]
-    return VC
-
-
-def Duty_cycle_max_buck_calc(Vout_max, VDiodo, Vsw,Vin_min, Effmin):
-    return round(((Vout_max+VDiodo)/(Vin_min-Vsw+VDiodo))*(1+(100-Effmin)/100),2)   
-
-def Duty_cycle_max_buck_calc_2(Vout_max, VDiodo, Vsw,Vin_min, Vdc_Loss):
-    if VDiodo > Vsw :
-        Vsemicondutor = VDiodo
-    else:
-        Vsemicondutor = Vsw
-    return round(((Vout_max+Vdc_Loss+Vsemicondutor)/(Vin_min)),2)  
-
-
-
-
-def ILmin_calc(Iout_max, DeltaIL_max):
-    return round (Iout_max - ((DeltaIL_max)/2) )
-
 def main():
-    
     print("Dimencionamento do conversor")
     #VARIAVEIS LOCAIS
     VDiodo=0.5 # apenas para teste
@@ -214,23 +40,9 @@ def main():
     Idelta_max=0.0
     ET_L=0;
     #CORPO DO PROGRAMA
-    DCDC_Buck= Converter_dcdc(12.0, 12.0, 1.8, 1.8, 120.0, 500000.0, 30.0, 0.010, 92.0)
-    DCDC_Buck.Ganho()
-    DCDC_Buck.Delta_current_max()
-    DCDC_Buck.Out_current_dc()
-    DCDC_Buck.Out_current_max()
-    DCDC_Buck.Out_current_min()
-    DCDC_Buck.total_Rdc_Loss_calc()
-    DCDC_Buck.total_Vdc_Loss_calc()
-    DCDC_Buck.duty_cycle_estimation_calc()
-    DCDC_Buck.AC_DC_ratio_calc()
-    DCDC_Buck.Loss_Max_calc()
-    DCDC_Buck.Periode_calc ()
-    DCDC_Buck.Switch_time_on_calc()
-    DCDC_Buck.Switch_time_off_calc ()
-    DCDC_Buck.Current_ripple_Incrise_rate ()   
-    DCDC_Buck.Current_ripple_decrise_rate ()
-    
+    DCDC_Buck = bck.Converter_dcdc(12.0, 12.0, 1.8, 1.8, 120.0, 500000.0, 30.0, 0.010, 92.0)
+    DCDC_Buck = bck.Conceptual_Buck_draft(DCDC_Buck)
+
     simulation_step = sgn.step_simulation_calc(DCDC_Buck.T_total, 2938)
         
     triangular_wave = sgn.triangular_wave_generation(simulation_step, 
@@ -238,58 +50,53 @@ def main():
     
     PWM_signal = sgn.PWM_generation (triangular_wave, DCDC_Buck.duty_cycle_max)
     
-    IL = first_current_converter_simulation ( 
+    IL = bck.first_current_converter_simulation ( 
             PWM_signal, DCDC_Buck.Iout_min,DCDC_Buck.T_total, 
             DCDC_Buck.Iinc_rate, DCDC_Buck.Idec_rate, DCDC_Buck.duty_cycle_max,
             simulation_step)
     
-    IC = first_CAPout_current_converter_simulation( 
+    IC = bck.first_CAPout_current_converter_simulation( 
             PWM_signal, DCDC_Buck.DeltaIL_max,DCDC_Buck.T_total, 
             DCDC_Buck.Iinc_rate, DCDC_Buck.Idec_rate, DCDC_Buck.duty_cycle_max,
             simulation_step)
     
-    VL = first_voltage_inductor_simulation (PWM_signal, DCDC_Buck.Vin_max, 
+    VL = bck.first_voltage_inductor_simulation (PWM_signal, DCDC_Buck.Vin_max, 
                                             DCDC_Buck.Total_V_loss, 
                                             DCDC_Buck.Vout_max)
     
-    VC = first_voltage_capacitor_simulation (IC, DCDC_Buck.T_total, 
+    VC = bck.first_voltage_capacitor_simulation (IC, DCDC_Buck.T_total, 
                                              DCDC_Buck.Vout_ripple, 
                                              DCDC_Buck.Vout_max)
     
     
   
     
-    ILmin = ILmin_calc(DCDC_Buck.Iout_max, DCDC_Buck.DeltaIL_max)
+    ILmin = bck.ILmin_calc(DCDC_Buck.Iout_max, DCDC_Buck.DeltaIL_max)
     
+ 
+
     #Dmax = Duty_cycle_max_buck_calc_2(1.8,VDiodo, Vsw, 12, Vdc_loss)
     
-#--------------------------- L calculation -----------------------------------    
+#--------------------------- L calculation -----------------------------------        
+    L =bck.L_calc (DCDC_Buck.current_ratio, DCDC_Buck.Ton, DCDC_Buck.Vin_min,
+               DCDC_Buck.Vout_max, Vsw, VDiodo, DCDC_Buck.DeltaIL_max, 
+               DCDC_Buck.F_max, DCDC_Buck.Iout_max)
     
-    Lmax_calc1 =  bck.Lmax_calc_1(1.8, VDiodo, 0.15, 
-                             20, 500000)
-    
-    Iratio = bck.AC_DC_ratio_calc (DCDC_Buck.Iout_max, DCDC_Buck.DeltaIL_max)
-    
-    Lmax_calc2 = bck.Lmax_calc_2(12, Vsw, 1.8, 
-                             VDiodo, Iratio, 500000, 76.6)
-    
-    ET_L = bck.L_ET_calc (DCDC_Buck.Ton, DCDC_Buck.Vin_min, 
-                               DCDC_Buck.Vout_max, Vsw)
-    
-    Lmax_calc3 = bck.Lmax_calc_3 (ET_L, DCDC_Buck.current_ratio, DCDC_Buck.Iout_max)
-    
+    print("Lmin: ", L, "H")
+
+    """
     #----- Para usar com a bobine escolhida e verificar se cumpre com os requisitos
     Iac_estimated = bck.estimation_current_component_AC(ET_L,Lmax_calc2)   
     
-    Iratio_estimated = bck.estimation_Iratio_calc(Iac_estimated,DCDC_Buck.Iout_max)
+    #Iratio_estimated = bck.estimation_Iratio_calc(Iac_estimated,DCDC_Buck.Iout_max)
     
-    IL_peak_estimated = bck.estimation_IL_peak_calc(DCDC_Buck.Iout_max,Iac_estimated)
+    #IL_peak_estimated = bck.estimation_IL_peak_calc(DCDC_Buck.Iout_max,Iac_estimated)
     
-    IL_RMS = bck.estimation_ILRMS_calc(DCDC_Buck.Iout_dc,Iac_estimated)
+    #IL_RMS = bck.estimation_ILRMS_calc(DCDC_Buck.Iout_dc,Iac_estimated)
     
-    L_copperloss_estimation =  bck.Estimation_L_copperloss_calc (IL_RMS,0.02)
+    #L_copperloss_estimation =  bck.Estimation_L_copperloss_calc (IL_RMS,0.02)
     
-    Lenergy = bck.L_energy_core_calc (IL_peak_estimated, Lmax_calc2)
+    #Lenergy = bck.L_energy_core_calc (IL_peak_estimated, Lmax_calc2)
     
     Cout_min_1 = bck.Cout_max_calc_1(20, 0.165, 
                                  0.01, 600000)
@@ -394,7 +201,7 @@ def main():
     #                    "tempo [s]", "estado do transistor")
  
     
-  
+""" 
 # Execução direta
 if __name__ == "__main__":
     main()

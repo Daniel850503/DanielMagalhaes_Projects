@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='power_converter_tools',
-    version='0.2.0',
+    version='0.7.0',
     packages=find_packages(include=['Buck_library', 'Buck_library.*',
                                     'Signals_library', 'Signals_library.*'
                                     'Plot_library', 'Plot_library.*']),
